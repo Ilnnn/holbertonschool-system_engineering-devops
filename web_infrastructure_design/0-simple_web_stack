@@ -1,35 +1,48 @@
-
-Web Infrastructure: Single-Server Setup
-Overview
-This project documents a basic web infrastructure designed to host a website reachable via www.foobar.com. The setup utilizes a single-server architecture commonly referred to as a LAMP (Linux, Apache/Nginx, MySQL, PHP/Python/etc.) stack.
-Architecture Design
-Infrastructure Diagram (YAML/Mermaid Representation)
-The following structure represents the flow of traffic within the single-server environment:
 graph TD
-```
-    User((User)) -->|HTTP Request| DNS[DNS Server]
-    DNS -->|Returns IP: 8.8.8.8| User
-    User -->|Connects to 8.8.8.8| Nginx[Nginx Web Server]
-    Nginx -->|Handles/Forwards| App[Application Server]
-    App -->|Queries| MySQL[(MySQL Database)]
-    App -->|Returns Data| Nginx
-    Nginx -->|HTTP Response| User
-```
-Technical Specifications
-Component	Role
-Domain Name	Provides a human-readable alias for the server's IP address.
-DNS Record	www is configured as an A record pointing to 8.8.8.8.
-Nginx	Acts as the web server, handling incoming traffic and static files.
-Application Server	Executes the application code base and handles business logic.
-MySQL	Manages persistent data storage for the application.
-Communication	Uses the TCP/IP protocol suite to facilitate data transfer.
-Critical Infrastructure Issues
-This infrastructure is suitable for small, low-traffic projects but possesses significant limitations for production-grade applications:
-Single Point of Failure (SPOF): Because all services reside on one machine, a hardware failure or operating system crash results in total service unavailability.
-Maintenance Downtime: Performing updates, patches, or code deployments requires restarting services, which forces the website offline during the maintenance window.
-Scalability Constraints: The server shares CPU, RAM, and storage across all processes. As incoming traffic increases, the server will eventually become overwhelmed, and there is no simple way to distribute the load across multiple resources.
-Next Steps for Improvement
-To overcome these limitations, the next architectural iteration should focus on:
-Decoupling components: Moving the database to a dedicated server.
-Redundancy: Implementing a Load Balancer and a secondary application server.
-Scalability: Adopting horizontal scaling strategies to handle traffic spikes.
+    User((User's Computer)) -->|1. Types www.foobar.com| DNS[DNS Server]
+    DNS -->|2. Returns IP: 8.8.8.8| User
+    User -->|3. HTTP Request via TCP/IP| Server[Server IP: 8.8.8.8]
+    
+    subgraph Single Server Infrastructure
+        Server --> WebServer[Web Server: Nginx]
+        WebServer -->|Forwards dynamic requests| AppServer[Application Server]
+        AppServer <-->|Queries data| DB[(Database: MySQL)]
+        AppServer <-->|Executes logic| AppFiles[Application Files / Codebase]
+    end
+    
+    WebServer -->|4. HTTP Response| User
+
+# - Simple Web Stack
+
+## Request Flow
+1. A user opens their browser and types `www.foobar.com`.
+2. The browser queries the **DNS (Domain Name System)** to resolve the domain name into an IP address.
+3. The DNS returns the configured IP address (`8.8.8.8`).
+4. The user's computer establishes a connection and sends an HTTP request to the server at `8.8.8.8`.
+5. The **Web Server (Nginx)** receives the request. It serves static files directly or forwards dynamic requests to the **Application Server**.
+6. The Application Server runs the **Application Files (Code base)**, fetching or writing data to the **Database (MySQL)** as needed.
+7. The Application Server passes the generated HTML back to the Web Server, which sends it back to the user's screen.
+
+## Infrastructure Specifics
+
+* **What is a server:** A server is a computer (hardware or virtual) and software system that provides resources, data, or services to other computers (clients) over a network.
+
+* **What is the role of the domain name:** Computers communicate using IP addresses (numbers), which are hard for humans to remember. A domain name provides a human-readable alias for an IP address.
+
+* **What type of DNS record `www` is in `www.foobar.com`:** It is typically an **A record** (Address record) that maps the domain directly to the IPv4 address `8.8.8.8`. (Note: It could also be a CNAME pointing to the root `foobar.com`, but an A record directly links to the IP).
+
+* **What is the role of the web server (Nginx):** It accepts incoming HTTP/HTTPS requests from clients, serves static content (HTML, CSS, images), and acts as a reverse proxy by routing dynamic requests to the application server.
+
+* **What is the role of the application server:** It provides the environment to run the application's code base. It processes business logic and dynamically generates web pages by interacting with the database.
+
+* **What is the role of the database (MySQL):** It provides structured, persistent storage for the application's data (e.g., user profiles, articles, passwords).
+
+* **What is the server using to communicate with the user's computer:** The server communicates with the client using the **TCP/IP** (Transmission Control Protocol/Internet Protocol) suite, specifically handling web traffic over HTTP/HTTPS.
+
+## Issues with this Infrastructure
+
+While this setup is simple and cheap, it has critical flaws for a production environment:
+
+* **SPOF (Single Point of Failure):** Because all components (web server, app server, database) are hosted on a single physical or virtual machine, if this machine fails (hardware crash, power loss, OS panic), the entire website goes offline.
+* **Downtime during maintenance:** If you need to deploy new code, update the operating system, or change database schemas, you often need to restart services (like Nginx or MySQL). During this restart period, the server cannot respond to requests, resulting in downtime for the users.
+* **Cannot scale:** A single server has fixed physical limits (CPU, RAM, Disk I/O). If the website experiences a sudden spike in incoming traffic, the server will become overloaded and slow down or crash. You cannot easily distribute the load.
