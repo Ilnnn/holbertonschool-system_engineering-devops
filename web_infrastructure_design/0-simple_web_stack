@@ -5,8 +5,8 @@ This project documents a basic web infrastructure designed to host a website rea
 Architecture Design
 Infrastructure Diagram (YAML/Mermaid Representation)
 The following structure represents the flow of traffic within the single-server environment:
-Extrait de code
 graph TD
+```
     User((User)) -->|HTTP Request| DNS[DNS Server]
     DNS -->|Returns IP: 8.8.8.8| User
     User -->|Connects to 8.8.8.8| Nginx[Nginx Web Server]
@@ -14,6 +14,7 @@ graph TD
     App -->|Queries| MySQL[(MySQL Database)]
     App -->|Returns Data| Nginx
     Nginx -->|HTTP Response| User
+```
 Technical Specifications
 Component	Role
 Domain Name	Provides a human-readable alias for the server's IP address.
