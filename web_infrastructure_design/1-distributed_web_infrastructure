@@ -1,0 +1,66 @@
+# 1. Three-Server Web Infrastructure
+
+This infrastructure expands on the simple web stack by introducing redundancy and traffic distribution to host the website `www.foobar.com`.
+
+## Infrastructure Diagram
+
+```mermaid
+graph TD
+    User((User's Computer)) -->|HTTP Request| DNS[DNS Server]
+    DNS -->|Returns LB IP| User
+    User -->|Connects to Load Balancer| LB[Load Balancer: HAproxy]
+    
+    subgraph Web & Application Layer (Active-Active)
+        LB -->|Round Robin| S1[Server 1]
+        LB -->|Round Robin| S2[Server 2]
+        
+        S1 --> Nginx1[Web Server: Nginx]
+        Nginx1 --> App1[Application Server]
+        App1 --> Files1[Application Files]
+        
+        S2 --> Nginx2[Web Server: Nginx]
+        Nginx2 --> App2[Application Server]
+        App2 --> Files2[Application Files]
+    end
+    
+    subgraph Database Layer (Primary-Replica)
+        App1 -->|Writes| DB1[(MySQL: Primary)]
+        App2 -->|Writes| DB1
+        App1 -->|Reads| DB2[(MySQL: Replica)]
+        App2 -->|Reads| DB2
+        DB1 -.->|Asynchronous Replication| DB2
+    end
+
+Component Explanations
+
+Why Additional Elements Were Added : 
+Load Balancer (HAproxy): Added to distribute incoming network traffic across multiple servers. It acts as a traffic cop, optimizing resource utilization, maximizing throughput, and minimizing response time.
+
+Second Server Setup: Added to provide redundancy and high availability. If one server experiences a crash or undergoes maintenance, the other server can continue to handle 100% of the traffic without causing a website outage.
+
+Load Balancer Mechanics
+Distribution Algorithm: The load balancer is configured with Round Robin.
+
+How it works: It routes incoming user requests to the servers sequentially (e.g., first request goes to Server 1, second to Server 2, third back to Server 1, etc.). It assumes all backend servers have equal capacity.
+Active-Active Setup: Both Server 1 and Server 2 are active simultaneously and processing traffic at the same time. This differs from an Active-Passive setup, where one server handles all the traffic while the second sits idle as a standby, only turning on if the active server fails.
+
+Database Primary-Replica Cluster
+
+How it works: Data modification happens on the Primary node and is synchronized to the Replica node asynchronously. The Replica continuously duplicates the Primary node's data.
+Application Behavior (Primary vs. Replica): * The application sends all Write operations (INSERT, UPDATE, DELETE) exclusively to the Primary node.
+The application sends all Read operations (SELECT) to the Replica node. This isolates heavy read traffic from the write stream, improving database efficiency.
+
+Infrastructure Issues & Limitations
+Despite having multiple servers, this infrastructure retains severe architectural flaws:
+
+SPOF (Single Points of Failure):
+The Load Balancer (HAproxy): If the HAproxy server fails, no traffic can reach the application servers, and the entire website goes offline.
+
+The Primary Database: If the Primary MySQL database crashes, the application can no longer process write requests (e.g., users cannot register or create content).
+
+Security Issues:
+No HTTPS: Traffic is transmitted in plain text via HTTP. Sensitive data (passwords, sessions) can be intercepted using man-in-the-middle attacks.
+No Firewall: There is no mechanism to block unauthorized port scanning or unwanted inbound traffic, leaving components vulnerable to network attacks.
+
+No Monitoring:
+There is no logging, alerting, or health monitoring system in place. If a service malfunctions or runs out of memory, the infrastructure team will remain unaware until users complain about the service being down.
