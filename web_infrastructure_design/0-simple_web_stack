@@ -1,1 +1,34 @@
 
+Web Infrastructure: Single-Server Setup
+Overview
+This project documents a basic web infrastructure designed to host a website reachable via www.foobar.com. The setup utilizes a single-server architecture commonly referred to as a LAMP (Linux, Apache/Nginx, MySQL, PHP/Python/etc.) stack.
+Architecture Design
+Infrastructure Diagram (YAML/Mermaid Representation)
+The following structure represents the flow of traffic within the single-server environment:
+Extrait de code
+graph TD
+    User((User)) -->|HTTP Request| DNS[DNS Server]
+    DNS -->|Returns IP: 8.8.8.8| User
+    User -->|Connects to 8.8.8.8| Nginx[Nginx Web Server]
+    Nginx -->|Handles/Forwards| App[Application Server]
+    App -->|Queries| MySQL[(MySQL Database)]
+    App -->|Returns Data| Nginx
+    Nginx -->|HTTP Response| User
+Technical Specifications
+Component	Role
+Domain Name	Provides a human-readable alias for the server's IP address.
+DNS Record	www is configured as an A record pointing to 8.8.8.8.
+Nginx	Acts as the web server, handling incoming traffic and static files.
+Application Server	Executes the application code base and handles business logic.
+MySQL	Manages persistent data storage for the application.
+Communication	Uses the TCP/IP protocol suite to facilitate data transfer.
+Critical Infrastructure Issues
+This infrastructure is suitable for small, low-traffic projects but possesses significant limitations for production-grade applications:
+Single Point of Failure (SPOF): Because all services reside on one machine, a hardware failure or operating system crash results in total service unavailability.
+Maintenance Downtime: Performing updates, patches, or code deployments requires restarting services, which forces the website offline during the maintenance window.
+Scalability Constraints: The server shares CPU, RAM, and storage across all processes. As incoming traffic increases, the server will eventually become overwhelmed, and there is no simple way to distribute the load across multiple resources.
+Next Steps for Improvement
+To overcome these limitations, the next architectural iteration should focus on:
+Decoupling components: Moving the database to a dedicated server.
+Redundancy: Implementing a Load Balancer and a secondary application server.
+Scalability: Adopting horizontal scaling strategies to handle traffic spikes.
