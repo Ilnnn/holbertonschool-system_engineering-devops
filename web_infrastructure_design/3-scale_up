@@ -1,0 +1,48 @@
+graph TD
+    User((User)) -->|HTTPS| FloatingIP[Floating IP / Cluster VIP]
+    
+    subgraph LB_Cluster
+        LB1[HAproxy 1] <-->|Keepalived/Heartbeat| LB2[HAproxy 2]
+    end
+    
+    FloatingIP --> LB1
+    FloatingIP --> LB2
+
+    subgraph Web_Tier
+        LB1 & LB2 --> Web1[Nginx 1]
+        LB1 & LB2 --> Web2[Nginx 2]
+    end
+
+    subgraph App_Tier
+        Web1 & Web2 --> App1[App Server 1]
+        Web1 & Web2 --> App2[App Server 2]
+    end
+
+    subgraph DB_Tier
+        App1 & App2 --> DB_Primary[(MySQL Primary)]
+        DB_Primary -.->|Replication| DB_Replica[(MySQL Replica)]
+    end
+
+Component Additions and Rationale
+
+1. Load Balancer Cluster (HAproxy + Keepalived)
+Why: The single load balancer was a Single Point of Failure (SPOF). By adding a second load balancer and configuring them in a cluster using a "Floating IP" (Virtual IP), we ensure that if one HAproxy node fails, the other immediately takes over traffic, maintaining continuous availability.
+
+2. Dedicated Web Servers
+Why: By moving Nginx to dedicated servers, we separate the responsibility of handling static content and SSL termination from the application logic. This allows us to scale the web tier independently based on incoming request volume.
+
+3. Dedicated Application Servers
+Why: Separating the application server allows it to focus entirely on executing code and business logic. Since application code is often CPU-intensive, isolating it ensures that the web server’s ability to accept connections isn't throttled by backend processing time.
+
+4. Dedicated Database Servers
+Why: Databases are I/O intensive. By isolating them on their own hardware, we ensure that database operations (like complex SELECT queries or write locks) do not compete for RAM or CPU with the application code. This setup also simplifies database-specific tasks like backups and security hardening.
+
+Technical Specifics
+Component Decoupling: In this architecture, each layer (Web, App, DB) operates on its own dedicated resources. This creates a "Three-Tier Architecture" (Presentation, Logic, Data).
+Scaling Strategy: This setup allows for Horizontal Scaling. If traffic increases, you can simply add another Web server or another App server to the respective cluster without needing to upgrade the physical hardware of the existing machines.
+Redundancy: Every tier is now redundant. There are no single points of failure at the Load Balancer level, the Web/App level, or the Database level.
+
+Architectural Challenges
+Complexity: Managing a multi-server environment requires sophisticated configuration management tools (like Ansible, Puppet, or Chef) to ensure consistency across all nodes.
+Network Latency: Moving components to separate servers introduces network overhead. Communication between the Web, App, and Database tiers now travels over the internal network, requiring high-speed and secure private connections.
+Data Consistency: In a distributed system, you must ensure that state is handled correctly (e.g., using "sticky sessions" or shared session storage like Redis) so that a user doesn't lose their login session if their request is routed to a different application server.
