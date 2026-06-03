@@ -1,0 +1,42 @@
+Secured and Monitored Web Infrastructure
+Infrastructure Design
+
+The infrastructure consists of one Load Balancer (HAproxy) serving two backend servers. Each backend server includes Nginx, an application server, application files, and a database. Security is enforced by three firewalls and an SSL certificate. Monitoring is handled by local agents sending data to a central service.
+
+    User((User)) -->|HTTPS Port 443| FW_LB[Firewall 1]
+    FW_LB --> LB[HAproxy]
+    LB -->|HTTP| FW_S1[Firewall 2]
+    LB -->|HTTP| FW_S2[Firewall 3]
+    FW_S1 --> S1[Server 1: Nginx/App/DB Primary]
+    FW_S2 --> S2[Server 2: Nginx/App/DB Replica]
+    S1 -.->|Metrics| Agent1[Monitoring Agent]
+    S2 -.->|Metrics| Agent2[Monitoring Agent]
+    Agent1 & Agent2 --> Sumo[Sumologic Service]
+
+Technical Explanations
+
+Additions
+3 Firewalls: Placed to create a perimeter around the Load Balancer and each backend server to filter unauthorized traffic.
+SSL Certificate: Necessary to encrypt traffic between the user and the load balancer over port 443.
+3 Monitoring Clients: Installed on every server to report performance metrics and system health.
+Specifics
+
+Firewalls: Used to enforce access control lists (ACLs), allowing only required ports (80, 443) and blocking all other incoming connections.
+
+HTTPS: Used to provide encryption, data integrity, and server authentication via TLS.
+
+Monitoring: Used to track system state (CPU, RAM, Disk) and service availability.
+
+Collection Method: Agents run as background daemons, periodically polling local metrics and sending them to a centralized collector (Push model).
+Monitoring QPS: To monitor QPS, configure the monitoring agent to parse the Nginx access.log file, count the number of requests per second, and push that value as a metric to the dashboard.
+Infrastructure Issues
+
+SSL Termination at Load Balancer
+
+Issue: Traffic is decrypted at the Load Balancer. The traffic between the Load Balancer and the backend servers travels as plaintext HTTP. An attacker on the internal network could intercept this sensitive data.
+Single MySQL Write Node (Primary)
+
+Issue: The architecture relies on one Primary node for all write operations. If this node fails, the application cannot store new data, creating a single point of failure for all user-generated content.
+Co-located Components (Shared Stack)
+
+Issue: Running Nginx, the Application Server, and MySQL on the same machine leads to resource contention. High database activity (I/O) can slow down the Web Server or Application code. Furthermore, a security breach in the web application provides direct access to the database files on the same system.
